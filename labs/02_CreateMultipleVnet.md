@@ -243,7 +243,7 @@ To create the peerings, we need to define both side of it on the hub network, an
 ```go
 
 resource "azurerm_virtual_network_peering" "peer-main-to-feature" {
-  for_each = var.vnets
+  for_each = var.vnet_to_create
   name                      = "peer-main-to-${azurerm_virtual_network.feature_vnet[each.key].name}"
   resource_group_name       = data.azurerm_resource_group.main.name
   virtual_network_name      = azurerm_virtual_network.main_vnet.name
