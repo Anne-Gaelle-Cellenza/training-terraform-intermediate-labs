@@ -8,7 +8,7 @@ In this lab, you will learn how to use an ARM template inside Terraform.
 
 After you complete this lab, you will be able to:
 
-- Deploy a Virutal Network using Terraform and ARM
+- Deploy a Virtual Network using Terraform and ARM
 - Understand Terraform limitations and work-arounds
 
 ## Instructions

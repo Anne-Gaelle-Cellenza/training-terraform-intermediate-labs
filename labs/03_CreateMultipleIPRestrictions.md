@@ -40,7 +40,7 @@ In your *main* Resource Group (the one tagged with `layer` = `main`), create a S
 
 2/ Get project template
 
-Clone the repository https://github.com/Anne-Gaelle-Cellenza/training-terraform-intermediate-labs-setup
+Clone the repository <https://github.com/Anne-Gaelle-Cellenza/training-terraform-intermediate-labs-setup>
 
 ```bash
 git clone https://github.com/Anne-Gaelle-Cellenza/training-terraform-intermediate-labs-setup.git
@@ -218,4 +218,3 @@ Remove the resources using the command
 ```powershell
 terraform destroy -var-file="..\configuration\dev\dev.tfvars" -auto-approve
 ```
-
