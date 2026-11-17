@@ -182,7 +182,7 @@ terraform init -backend-config="..\configuration\dev\backend.hcl" -reconfigure
 terraform version
 ```
 
-> **Question:**
+> **Questions:**
 >
 > - Which azurerm version did Terraform install?  
 > - Is it the latest one published in the registry?  
@@ -338,7 +338,7 @@ terraform plan -var-file="..\configuration\dev\dev.tfvars"
 az network vnet show --resource-group "the_name_of_your_main_resource_group" --name vnet-lab08b-arm --query "privateEndpointVNetPolicies"
 ```
 
-> **Question:**
+> **Questions:**
 >
 > - What does the plan show?
 > - Do you see the property change, or a change inside a JSON string?
@@ -504,7 +504,7 @@ terraform destroy -target=azurerm_resource_group_template_deployment.example -va
 az network vnet list --resource-group "the_name_of_your_lab_resource_group" --query "[].name" -o tsv
 ```
 
-> **Question:**
+> **Questions:**
 >
 > - Is `vnet-lab08b-arm` still there?
 > - Look up the `template_deployment` setting in the `features` block of the azurerm provider and explain what you observe...
