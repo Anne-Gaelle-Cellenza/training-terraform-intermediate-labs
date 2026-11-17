@@ -1,370 +1,242 @@
-# Setup environment
+# Lab overview
 
-## Lab overview
+In this lab, you will continue dealing with resources import, now using the *import* block.  
+We create a VNet with Terraform, and add subnets outside Terraform (az cli).  
+We will also have a look at code refactoring with the moved block.
 
-In this lab, you will continue your experimentations on resources import, this time using the import block.
-You will also have a look at code refactoring with the moved block.
+- [Lab overview](#lab-overview)
+  - [Objectives](#objectives)
+  - [Instructions](#instructions)
+    - [Before you start](#before-you-start)
+    - [Exercise 1: Setup your environment (*tfstate* and project template)](#exercise-1-setup-your-environment-tfstate-and-project-template)
+      - [Backend](#backend)
+      - [Variables](#variables)
+    - [Exercise 2: Create a Virtual Network with terraform and add subnets with az cli](#exercise-2-create-a-virtual-network-with-terraform-and-add-subnets-with-az-cli)
+    - [Exercise 3: Import 1 subnet with an import block](#exercise-3-import-1-subnet-with-an-import-block)
+    - [Exercise 4: Import the other subnets with import blocks and generate automatically the terraform configuration](#exercise-4-import-the-other-subnets-with-import-blocks-and-generate-automatically-the-terraform-configuration)
+    - [Exercise 5: Refactor the subnets terraform configuration with a for\_each, and move the resources with a moved block](#exercise-5-refactor-the-subnets-terraform-configuration-with-a-for_each-and-move-the-resources-with-a-moved-block)
 
 ## Objectives
 
 After you complete this lab, you will be able to:
 
--   Import resources using the import block
--   Use terraform feature for generating automatically resources configuration
--   Refactor code using the moved block
+- Import resources using the *import* block,
+- Use terraform feature for generating automatically resources configuration,
+- Refactor code using the *moved* block.
 
 ## Instructions
 
 ### Before you start
 
-- Ensure Terraform (version >= 1.5.0) is installed and available from system's PATH.
+- Ensure Terraform (version ~> 1.13) is installed and available from system's PATH.
 - Ensure Azure CLI is installed.
 - Check your access to the Azure Subscriptions and Resource Groups provided for this training.
 
-### Exercise 1: Setup your environment
+### Exercise 1: Setup your environment (*tfstate* and project template)
 
-In your *main* Resource Group (the one tagged with attribute **layer** with value **main**), create a Storage Account, with a Blob container named **tfstate**
+1/ Create the container for *tfstate*
 
-Clone the repository https://gitvnet_name.com/smartinez-cellenza/training-terraform-intermediate-labs-setup
+In your *main* Resource Group (the one tagged with `layer` = `main`), create a Storage Account, with a Blob container named `tfstate` to store the *tfstate* file.
+
+2/ Get project template
+
+Clone the repository https://github.com/Anne-Gaelle-Cellenza/training-terraform-intermediate-labs-setup
 
 ```bash
-git clone https://gitvnet_name.com/smartinez-cellenza/training-terraform-intermediate-labs-setup.git
+git clone https://github.com/Anne-Gaelle-Cellenza/training-terraform-intermediate-labs-setup.git
 cd training-terraform-intermediate-labs-setup
 ```
 
-> This configuration contains a basic Terraform project configuration
+> This template contains a basic Terraform project configuration that:
+>
+> - uses a `data` resource group,
+> - defines two variables `resource_group_name` and `location`,
+> - contains a `configuration\dev` folder with *backend* and *tfvars* for dev.
 
-In the *configuration/dev* folder, update the **backend.hcl** file :
+3/ Configure the project template to use your environment
 
-- **resource_group_name**  = "the_name_of_your_main_resource_group"
-- **storage_account_name** = "the_name_of_the_storage_account_you_just_created"
-- **container_name**       = "tfstates"
-- **key**                  = "import.tfstate"
+#### Backend
 
-> This configuration use Partial backend configuration. The Storage Account just created is used for tfstate file persistence
+The project template uses a partial backend configuration: we don't define the backend configuration in the `terraform` block but in an external file, read at `terraform init` time.
 
-In the *configuration/dev* folder, update the *dev.tfvars* file :
+In the *configuration/dev* folder, update the `backend.hcl` file as:
 
-- **resource_group_name** = "the_name_of_your_main_resource_group"
+```hcl
+  resource_group_name  = "the_name_of_your_main_resource_group"
+  storage_account_name = "the_name_of_the_storage_account_you_just_created"
+  container_name      = "tfstate"
+  key                 = "importblock.tfstate"
+```
 
-### Exercise 2: Create a Virtual Network with terraform and add subnets from the portal
+> Define your backend using the Storage Account you created few minutes ago.
 
-Add the following to your `variable.tf` file: 
+#### Variables
 
-```go
+In the *configuration/dev* folder, update the `dev.tfvars` file:
 
+```hcl
+resource_group_name = "the_name_of_your_main_resource_group"
+```
+
+### Exercise 2: Create a Virtual Network with terraform and add subnets with az cli
+
+Add the following object to your `variable.tf` file:
+
+```hcl
 variable "vnet_nameconfig" {
   type = object({
     address_space = optional(list(string), ["10.100.0.0/24"])
-    location = optional(string, "eastus")
+    location      = optional(string, "westeurope")
     vnet_namename = optional(string,"vnet_name")
   })
-
-```
-And specify the value in the dev.tfvars file: 
-
-```go
-
-vnet_nameconfig = {
-    address_space = ["10.0.0.0/24"]
 }
 
 ```
 
+Specify the value in the `dev.tfvars` file:
+
+```hcl
+vnet_nameconfig = {
+    address_space = ["10.0.0.0/24"]
+}
+```
+
 Add the following to your `main.tf` file:
 
-```go
-
+```hcl
 resource "azurerm_virtual_network" "main_vnet" {
   name                = var.vnet_nameconfig.vnet_namename
   address_space       = var.vnet_nameconfig.address_space
   location            = var.vnet_nameconfig.location
   resource_group_name = data.azurerm_resource_group.self.name
 }
-
 ```
 
-Create the vnet with a `terraform apply` command
+Create the vnet with a `terraform apply` command:
+
+PowerShell
+
+```powershell
+az login
+az account set --subscription "the_main_subscription_id"
+$env:ARM_SUBSCRIPTION_ID="the_main_subscription_id"
+# use the '-reconfigure' option in case your local folder was previously configured with a different backend (e.g. from previous labs)
+terraform init -backend-config="..\configuration\dev\backend.hcl" -reconfigure
+terraform apply -var-file="..\configuration\dev\dev.tfvars" -auto-approve
+```
+
+Bash
 
 ```bash
 az login
 az account set --subscription "the_main_subscription_id"
-$env:ARM_SUBSCRIPTION_ID="the_main_subscription_id"
+export ARM_SUBSCRIPTION_ID="the_main_subscription_id"
+# use the '-reconfigure' option in case your local folder was previously configured with a different backend (e.g. from previous labs)
 terraform init -backend-config="..\configuration\dev\backend.hcl" -reconfigure
+terraform apply -var-file="..\configuration\dev\dev.tfvars" -auto-approve
 ```
 
-You can check the existence of your virtual network with the command `az network`:
+You can check the existence of your virtual network from Azure Portal or using the command `az network`:
+
+```powershell
+az network vnet show -n vnet_name -g "the_name_of_your_main_resource_group"
+```
+
+Create 4 subnets on your virtual network using az cli (use /26 on the VNet CIDR range)
+
+```powershell
+az network vnet subnet create -n "subnet1" -g "the_name_of_your_main_resource_group" --vnet-name vnet_name --address-prefixes 10.0.0.0/26
+az network vnet subnet create -n "subnet2" -g "the_name_of_your_main_resource_group" --vnet-name vnet_name --address-prefixes 10.0.0.64/26
+az network vnet subnet create -n "subnet3" -g "the_name_of_your_main_resource_group" --vnet-name vnet_name --address-prefixes 10.0.0.128/26
+az network vnet subnet create -n "subnet4" -g "the_name_of_your_main_resource_group" --vnet-name vnet_name --address-prefixes 10.0.0.192/26
+```
+
+Check again the virtual network with the command `az network vnet show -n vnet_name -g "the_name_of_your_main_resource_group"`. You should now see the created subnets in the `subnets` section.
+
+We now have
+
+- a VNet managed by Terraform
+- with 4 subnets created outside Terraform.
+
+If we have a look to the VNet resource in tfstate with `terraform state show azurerm_virtual_network.main_vnet`, we get
 
 ```bash
-
-yumemaru [ ~ ]$ az network vnet show -n vnet_name -g rsg_name
-{
-  "addressSpace": {
-    "addressPrefixes": [
-      "10.0.0.0/24"
-    ]
-  },
-  "dhcpOptions": {
-    "dnsServers": []
-  },
-  "enableDdosProtection": false,
-  "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name",
-  "location": "eastus",
-  "name": "vnet_name",
-  "provisioningState": "Succeeded",
-  "resourceGroup": "rsg_name",
-  "resourceGuid": "00000000-0000-0000-0000-000000000000",
-  "subnets": [],
-  "tags": {},
-  "type": "Microsoft.Network/virtualNetworks",
-  "virtualNetworkPeerings": []
-}
-
-```
-
-Create 4 subnets on your virtual network with the command `az network vnet create -n subnet_name -g rsg_name --vnet-name vnet_name --address-prefixes address_prefix_for_subnet`.
-**Note: To create 4 subnets on the virtual network range, you can use `/26` cidr**
-
-```bash
-
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet1 --address-prefixes 10.0.0.0/26
-{
-  "addressPrefix": "10.0.0.0/26",
-  "delegations": [],
-  "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet1",
-  "name": "subnet1",
-  "privateEndpointNetworkPolicies": "Disabled",
-  "privateLinkServiceNetworkPolicies": "Enabled",
-  "provisioningState": "Succeeded",
-  "resourceGroup": "rsg_name",
-  "type": "Microsoft.Network/virtualNetworks/subnets"
-}
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet2 --address-prefixes 10.0.0.64/26
-{
-  "addressPrefix": "10.0.0.64/26",
-  "delegations": [],
-  "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet2",
-  "name": "subnet2",
-  "privateEndpointNetworkPolicies": "Disabled",
-  "privateLinkServiceNetworkPolicies": "Enabled",
-  "provisioningState": "Succeeded",
-  "resourceGroup": "rsg_name",
-  "type": "Microsoft.Network/virtualNetworks/subnets"
-}
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet3 --address-prefixes 10.0.0.128/26
-{
-  "addressPrefix": "10.0.0.128/26",
-  "delegations": [],
-  "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet3",
-  "name": "subnet3",
-  "privateEndpointNetworkPolicies": "Disabled",
-  "privateLinkServiceNetworkPolicies": "Enabled",
-  "provisioningState": "Succeeded",
-  "resourceGroup": "rsg_name",
-  "type": "Microsoft.Network/virtualNetworks/subnets"
-}
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name AzureBastionSubnet --address-prefixes 10.0.0.192/26
-{
-  "addressPrefix": "10.0.0.192/26",
-  "delegations": [],
-  "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/AzureBastionSubnet",
-  "name": "AzureBastionSubnet",
-  "privateEndpointNetworkPolicies": "Disabled",
-  "privateLinkServiceNetworkPolicies": "Enabled",
-  "provisioningState": "Succeeded",
-  "resourceGroup": "rsg_name",
-  "type": "Microsoft.Network/virtualNetworks/subnets"
-}
-
-```
-
-Check again the virtual network with the command `az network vnet show -n vnet_name -g rsg_name`. You should see the subnets in the `subnets` section: 
-
-```json
-
-"subnets": [
-    {
-      "addressPrefix": "10.0.0.0/26",
-      "delegations": [],
-      "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet1",
-      "name": "subnet1",
-      "privateEndpointNetworkPolicies": "Disabled",
-      "privateLinkServiceNetworkPolicies": "Enabled",
-      "provisioningState": "Succeeded",
-      "resourceGroup": "rsg_name",
-      "type": "Microsoft.Network/virtualNetworks/subnets"
-    },
-    {
-      "addressPrefix": "10.0.0.64/26",
-      "delegations": [],
-      "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet2",
-      "name": "subnet2",
-      "privateEndpointNetworkPolicies": "Disabled",
-      "privateLinkServiceNetworkPolicies": "Enabled",
-      "provisioningState": "Succeeded",
-      "resourceGroup": "rsg_name",
-      "type": "Microsoft.Network/virtualNetworks/subnets"
-    },
-    {
-      "addressPrefix": "10.0.0.128/26",
-      "delegations": [],
-      "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet3",
-      "name": "subnet3",
-      "privateEndpointNetworkPolicies": "Disabled",
-      "privateLinkServiceNetworkPolicies": "Enabled",
-      "provisioningState": "Succeeded",
-      "resourceGroup": "rsg_name",
-      "type": "Microsoft.Network/virtualNetworks/subnets"
-    },
-    {
-      "addressPrefix": "10.0.0.192/26",
-      "delegations": [],
-      "etag": "W/\"00000000-0000-0000-0000-000000000000\"",
-      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/AzureBastionSubnet",
-      "name": "AzureBastionSubnet",
-      "privateEndpointNetworkPolicies": "Disabled",
-      "privateLinkServiceNetworkPolicies": "Enabled",
-      "provisioningState": "Succeeded",
-      "resourceGroup": "rsg_name",
-      "type": "Microsoft.Network/virtualNetworks/subnets"
-    }
-  ]
-
-```
-
-Check the state to see the vnet object with the command `terraform state show`:
-
-```bash
-
-df@df2204lts:~/Documents/myrepo/tf-intermediaire-lab2/src$ terraform state show azurerm_virtual_network.main_vnet
+$ terraform state show azurerm_virtual_network.main_vnet
 # azurerm_virtual_network.main_vnet:
 resource "azurerm_virtual_network" "main_vnet" {
-    address_space           = [
+    address_space                  = [
         "10.0.0.0/24",
     ]
-    dns_servers             = []
-    flow_timeout_in_minutes = 0
-    guid                    = "00000000-0000-0000-0000-000000000000"
-    id                      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name"
-    location                = "eastus"
-    name                    = "vnet_name"
-    resource_group_name     = "rsg_name"
-    subnet                  = []
+    bgp_community                  = null
+    dns_servers                    = []
+    edge_zone                      = null
+    flow_timeout_in_minutes        = 0
+    guid                           = "51024ff9-a1e8-410d-b819-39b07baf440a"
+    id                             = "/subscriptions/0d164587-df91-4ac8-993b-9c531ff15e7c/resourceGroups/rg-annegaelle-262306/providers/Microsoft.Network/virtualNetworks/vnet_name"
+    location                       = "westeurope"
+    name                           = "vnet_name"
+    private_endpoint_vnet_policies = "Disabled"
+    resource_group_name            = "rg-annegaelle-262306"
+    subnet                         = []
 }
-
 ```
 
-The result should display an empty list of subnets, because those are not currrently managed by terraform.
+> The result displays an empty list of subnets, because those are not (yet) managed by Terraform.
 
 ### Exercise 3: Import 1 subnet with an import block
 
-To add the subnets in the terraform coonfiguration, we will use the terraform import block on the first subnet.
+To add the subnets in the Terraform coonfiguration, we will use the Terraform *import* block on the first subnet.
 
-This import block is written as this:
+> Import block must respect the following syntax
+>
+> ```hcl
+> 
+> import {
+>     to = <resource_address_in_tf_config>
+>     id = <resource_id_in_the_cloud_provider>
+> }
+> ```
 
-```go
+Create a new file `imports.tf` and add the following block to import your first subnet:
 
-import {
-    to = <resource_address_in_tf_config>
-    id = <resource_id_in_the_cloud_provider>
-}
-
-```
-
-Create a new file imports.tf and add the following block to import your first subnet:
-
-```go
-
+```hcl
 import {
     to = azurerm_subnet.subnet1
-    id = "subnet_resource_id"
+    id = "subnet_resource_id" # get the Azure resource id from the portal or from the `az network vnet show` cmd run before
 }
-
 ```
 
-Create a new file subnets.tf and add the following configuration to match the imported resource:
+Create a new file `subnets.tf` and add the following configuration to match the imported resource:
 
-```go
-
+```hcl
 resource "azurerm_subnet" "subnet1" {
   name = "subnet1"
   resource_group_name = data.azurerm_resource_group.self.name
   virtual_network_name = azurerm_virtual_network.main_vnet.name
   address_prefixes = ["10.0.0.0/26"]
-  
 }
 ```
 
-```bash
+Run `terraform plan`
 
-yumemaru [ ~ ]$ terraform plan -var-file="../configuration/dev/dev.tfvars"
-data.azurerm_resource_group.feature_rg: Reading...
-data.azurerm_resource_group.main: Reading...
-data.azurerm_resource_group.feature_rg: Read complete after 1s [id=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg_name-2]
-azurerm_virtual_network.feature_vnet["vnet2"]: Refreshing state... [id=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg_name-2/===============================================truncated/===============================================
-
-Terraform will perform the following actions:
-
-  # azurerm_subnet.subnet1 will be imported
-    resource "azurerm_subnet" "subnet1" {
-        address_prefixes                               = [
-            "10.0.0.0/26",
-        ]
-        enforce_private_link_endpoint_network_policies = true
-        enforce_private_link_service_network_policies  = false
-        id                                             = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet1"
-        name                                           = "subnet1"
-        private_endpoint_network_policies_enabled      = false
-        private_link_service_network_policies_enabled  = true
-        resource_group_name                            = "rg_name"
-        service_endpoint_policy_ids                    = []
-        service_endpoints                              = []
-        virtual_network_name                           = "vnet_name"
-    }
-
-Plan: 1 to import, 0 to add, 0 to change, 0 to destroy.
-
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-
-Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you run "terraform apply" now.
-
+```powershell
+terraform plan -var-file="..\configuration\dev\dev.tfvars"
 ```
 
-The plan display no resource to create or modify, but there is a `1 to import mention`.
+The plan indicates no resource to create or modify, but there is a `1 to import` mention.  
+![import](../Img/lab6-001.png)
+
 Run a terraform apply to validate the import:
 
-
-```bash
-
-Plan: 1 to import, 0 to add, 0 to change, 0 to destroy.
-
-Do you want to perform these actions?
-  Terraform will perform the actions described above.
-  Only 'yes' will be accepted to approve.
-
-  Enter a value: yes
-
-azurerm_subnet.subnet1: Importing... [id=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet1]
-azurerm_subnet.subnet1: Import complete [id=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rsg_name/providers/Microsoft.Network/virtualNetworks/vnet_name/subnets/subnet1]
-
-Apply complete! Resources: 1 imported, 0 added, 0 changed, 0 destroyed.
-
+```powershell
+terraform apply -var-file="..\configuration\dev\dev.tfvars" -auto-approve
 ```
 
 ### Exercise 4: Import the other subnets with import blocks and generate automatically the terraform configuration
 
-To import th other subnets, add the following import blocks in the `imports.tf` file:
+To import th other subnets, add the following *import* blocks in the `imports.tf` file (replace with each subnet id):
 
-```go
-
+```hcl
 import {
     to = azurerm_subnet.subnet2
     id = "subnet2_resource_id"
@@ -382,31 +254,40 @@ import {
 }
 ```
 
-Run a `terraform plan` command with the appropriate argument. You should get an error for each subnet to be imported. It's an expected error because we did not write the subnets terraform configuration.
+Run a `terraform plan` command (with `-var-file` option).
+
+> You should get an error for each subnet to be imported such as `The configuration for the given import target azurerm_subnet.subnet2 does not exist.`.  
+> This is an expected behaviour, as we didn't add the Terraform resource block for each of these subnets in Terraform template files.
 
 ```bash
+Planning failed. Terraform encountered an error while generating this plan.
 
 ╷
 │ Error: Configuration for import target does not exist
-│ 
-│   on imports.tf line 21, in import:
-│   21:     to = azurerm_subnet.AzureBastionSubnet
-│ 
-│ The configuration for the given import target azurerm_subnet.AzureBastionSubnet does not exist. If you wish to automatically generate config for this resource,
-│ use the -generate-config-out option within terraform plan. Otherwise, make sure the target resource exists within your configuration. For example:
-│ 
+│
+│   on import.tf line 7, in import:
+│    7:   to = azurerm_subnet.subnet2
+│
+│ The configuration for the given import target azurerm_subnet.subnet2 does not exist. If you wish to automatically generate
+│ config for this resource, use the -generate-config-out option within terraform plan. Otherwise, make sure the target resource
+│ exists within your configuration. For example:
+│
 │   terraform plan -generate-config-out=generated.tf
 ╵
 ```
 
-Notice, at the end of the error, the suggestion to use `terraform plan -generate-config-out=generated.tf`.
+> Note the suggestion to use `terraform plan -generate-config-out=generated.tf` !
+> We will go that way and let Terraform generate the templates for the subnets.
 
-Relaunch a `terraform plan` with the suggested additional argument.
+Run a new `terraform plan` command adding the `-generate-config-out="generated.tf"` option (and don't forget the usual `-var-file` option).
+
+```powershell
+terraform plan -var-file="..\configuration\dev\dev.tfvars" -generate-config-out="generated.tf"
+```
 
 You may get the folllowing error:
 
 ```bash
-
 Planning failed. Terraform encountered an error while generating this plan.
 
 ╷
@@ -417,15 +298,13 @@ Planning failed. Terraform encountered an error while generating this plan.
 │   (source code not available)
 │ 
 │ Attribute service_endpoint_policy_ids requires 1 item minimum, but config has only 0 declared.
-
 ```
 
-Ignore this error for now, an check in your folder the existence of a `generated.tf` file.
+> **Ignore** this error for now, an check in your folder the existence of a `generated.tf` file.
 
-It should contains something similar to this:
+It should contains something similar to:
 
 ```go
-
 # __generated__ by Terraform
 # Please review these resources and move them into your main configuration files.
 
@@ -467,10 +346,9 @@ resource "azurerm_subnet" "subnet2" {
 
 ```
 
-Comment the line for `service_endpoints` and `service_endpoint_policy_ids` as those were the parameters involved in the error, and re-run a terraform plan. You sould get an output similar to this:
+Comment the line for `service_endpoints` and `service_endpoint_policy_ids` as those were the parameters involved in the error, and re-run a terraform plan. You sould get an output similar to:
 
 ```bash
-
 Terraform will perform the following actions:
 
   # azurerm_subnet.AzureBastionSubnet will be imported
@@ -530,13 +408,12 @@ Plan: 3 to import, 0 to add, 0 to change, 0 to destroy.
 
 Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if
 you run "terraform apply" now.
-
 ```
 
-Run the apply command to validate the import. After the apply is complete, check the state with a `terraform state list`.You should see the subnets in the state now:
+Run the apply command to validate the import.  
+After the apply is complete, check the state with a `terraform state list`.You should now see the subnets in the state:
 
 ```bash
-
 df@df2204lts:~/Documents/myrepo/tf-intermediaire-lab2/src$ terraform state list
 data.azurerm_resource_group.feature_rg
 data.azurerm_resource_group.main
@@ -545,13 +422,11 @@ azurerm_subnet.subnet1
 azurerm_subnet.subnet2
 azurerm_subnet.subnet3
 azurerm_virtual_network.main_vnet
-
 ```
-
 
 ### Exercise 5: Refactor the subnets terraform configuration with a for_each, and move the resources with a moved block
 
-After the previous exercice, we have now, available in our terraform configuration, the 4 subnets defined as independant resources.
+After the previous exercise, we have now, available in our terraform configuration, the 4 subnets defined as independant resources.
 However, this is not optimized, and we would like to DRY this with a for_each.
 
 To get started, we will comment all the import blocks in the `imports.tf` file.

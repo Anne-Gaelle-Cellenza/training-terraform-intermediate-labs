@@ -47,7 +47,7 @@ In the *configuration/dev* folder, update the *dev.tfvars* file :
 
 ### Exercise 2: Create a Virtual Network using an ARM template
 
-In this exercice, we will create a Virtual Network with an ARM template. The workflow will still be managed by Terraform
+In this exercise, we will create a Virtual Network with an ARM template. The workflow will still be managed by Terraform
 
 In the **main.tf** file add the following content
 

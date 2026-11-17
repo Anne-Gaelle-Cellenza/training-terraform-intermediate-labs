@@ -47,7 +47,7 @@ In the *configuration/dev* folder, update the *dev.tfvars* file :
 
 ### Exercise 2: Create and consume a module for Storage Account
 
-In this exercice, we will create a module for Storage Account.
+In this exercise, we will create a module for Storage Account.
 
 This module will create a Storage Account and a blob container.
 
@@ -166,7 +166,7 @@ terraform apply -var-file="..\configuration\dev\dev.tfvars"
 
 ### Exercise 3: Use module outputs
 
-In this exercice, we will create a Storage Account Queue for the Storage we have provisionned.
+In this exercise, we will create a Storage Account Queue for the Storage we have provisionned.
 
 We will create this resource in the root module.
 
@@ -210,7 +210,7 @@ terraform apply -var-file="..\configuration\dev\dev.tfvars"
 
 ### Exercise 4: Implicit dependency
 
-In this exercice, we will create a new Storage Account Queue for a new Storage created with another module call.
+In this exercise, we will create a new Storage Account Queue for a new Storage created with another module call.
 
 We will create both resources during the same apply of the template, to ensure implicit dependency is well managed
 
@@ -263,13 +263,13 @@ The creation of the Container and the Queue has been triggered after the Storage
 
 Modules support Explicit dependency using the **depends_on** meta-attribute.
 
-In this exercice we're going to add a dependency to our module, and manage it with an explicit dependency.
+In this exercise we're going to add a dependency to our module, and manage it with an explicit dependency.
 
 In the **verions.tf** file, edit the **required_providers** and add a new provider, time. The required_providers should now be
 
 ```hcl
 required_providers {
-    azurerm = ">= 2.75.0"
+    azurerm = "~> 4.0.0"
     time    = ">= 0.7"
   }
 ```
@@ -354,7 +354,7 @@ module.storage_explicit_dependency.azurerm_storage_account.sa: Creation complete
 
 The modules support the for_each argument, and its behavior is the same than for resource block.
 
-In this exercice we're going to create 3 Storage Account module using a for_each meta-argument.
+In this exercise we're going to create 3 Storage Account module using a for_each meta-argument.
 
 In the **variables.tf** file of the root module, add a new variable
 
@@ -443,7 +443,7 @@ module.storage_loop["testsma6"].azurerm_storage_container.container: Creation co
 
 It is possible to import an existing Azure Resource to manage its lifecycle with Terraform, using a module.
 
-In this exercice we're going to create a Storage Account using the portal, and import it in tfstate and manage its lifecycle with a module.
+In this exercise we're going to create a Storage Account using the portal, and import it in tfstate and manage its lifecycle with a module.
 
 Using the Azure Portal, create a Storage Account
 
