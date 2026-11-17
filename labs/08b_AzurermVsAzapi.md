@@ -12,7 +12,7 @@ Short notes on _azurerm_ versus _azapi_:
 
 To make the difference visible, this lab **pins azurerm to a dedicated version (`~> 4.0.0`)** and next tries to use new features that were added to azurerm later on. These new features, out of reach for azurerm, will be deployed using the **azapi** provider.  
 
-> Note: Drift detection is compared in depth in lab *08c*.
+> Note: Drift detection is compared in depth in lab _08c_.
 
 - [Lab overview](#lab-overview)
   - [Objectives](#objectives)
