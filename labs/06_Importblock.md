@@ -97,7 +97,7 @@ You can check the existence of your virtual network with the command `az network
 
 ```bash
 
-yumemaru [ ~ ]$ az network vnet show -n vnet_name -g rsg_name
+[user]$ az network vnet show -n vnet_name -g rsg_name
 {
   "addressSpace": {
     "addressPrefixes": [
@@ -128,7 +128,7 @@ Create 4 subnets on your virtual network with the command `az network vnet creat
 
 ```bash
 
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet1 --address-prefixes 10.0.0.0/26
+[user]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet1 --address-prefixes 10.0.0.0/26
 {
   "addressPrefix": "10.0.0.0/26",
   "delegations": [],
@@ -141,7 +141,7 @@ yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name 
   "resourceGroup": "rsg_name",
   "type": "Microsoft.Network/virtualNetworks/subnets"
 }
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet2 --address-prefixes 10.0.0.64/26
+[user]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet2 --address-prefixes 10.0.0.64/26
 {
   "addressPrefix": "10.0.0.64/26",
   "delegations": [],
@@ -154,7 +154,7 @@ yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name 
   "resourceGroup": "rsg_name",
   "type": "Microsoft.Network/virtualNetworks/subnets"
 }
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet3 --address-prefixes 10.0.0.128/26
+[user]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name subnet3 --address-prefixes 10.0.0.128/26
 {
   "addressPrefix": "10.0.0.128/26",
   "delegations": [],
@@ -167,7 +167,7 @@ yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name 
   "resourceGroup": "rsg_name",
   "type": "Microsoft.Network/virtualNetworks/subnets"
 }
-yumemaru [ ~ ]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name AzureBastionSubnet --address-prefixes 10.0.0.192/26
+[user]$ az network vnet subnet create -g rsg_name --vnet-name vnet_name --name AzureBastionSubnet --address-prefixes 10.0.0.192/26
 {
   "addressPrefix": "10.0.0.192/26",
   "delegations": [],
@@ -305,7 +305,7 @@ resource "azurerm_subnet" "subnet1" {
 
 ```bash
 
-yumemaru [ ~ ]$ terraform plan -var-file="../configuration/dev/dev.tfvars"
+[user]$ terraform plan -var-file="../configuration/dev/dev.tfvars"
 data.azurerm_resource_group.feature_rg: Reading...
 data.azurerm_resource_group.main: Reading...
 data.azurerm_resource_group.feature_rg: Read complete after 1s [id=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg_name-2]
@@ -819,7 +819,7 @@ check the state to validate the move:
 
 ```bash
 
-yumemaru [ ~ ]$ terraform state list
+[user]$ terraform state list
 data.azurerm_resource_group.feature_rg
 data.azurerm_resource_group.main
 azurerm_subnet.hub_subnets["AzureBastionSubnet"]
